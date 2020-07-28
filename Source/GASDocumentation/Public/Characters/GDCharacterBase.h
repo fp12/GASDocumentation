@@ -93,6 +93,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GASDocumentation|GDCharacter")
 	virtual void FinishDying();
 
+	const FText& GetCharacterName() const { return CharacterName; }
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

@@ -42,8 +42,10 @@ enum class EGDAbilityInputID : uint8
 	Ability4		UMETA(DisplayName = "Ability4"),
 	// 7 R
 	Ability5		UMETA(DisplayName = "Ability5"),
-	// 8 Sprint
+	// 8 F
+	Ability6		UMETA(DisplayName = "Ability6"),
+	// 9 Sprint
 	Sprint			UMETA(DisplayName = "Sprint"),
-	// 9 Jump
+	// 10 Jump
 	Jump			UMETA(DisplayName = "Jump")
 };

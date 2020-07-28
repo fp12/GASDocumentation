@@ -1612,9 +1612,11 @@ enum class EGDAbilityInputID : uint8
 	Ability4		UMETA(DisplayName = "Ability4"),
 	// 7 R
 	Ability5		UMETA(DisplayName = "Ability5"),
-	// 8 Sprint
+	// 8 F
+	Ability6		UMETA(DisplayName = "Ability6"),
+	// 9 Sprint
 	Sprint			UMETA(DisplayName = "Sprint"),
-	// 9 Jump
+	// 10 Jump
 	Jump			UMETA(DisplayName = "Jump")
 };
 ```
@@ -2442,7 +2444,7 @@ Depending on the particular subclass of `AGameplayAbilityTargetActor` that you u
 | Common `TargetActor` Parameters | Definition                                                                                                                                                                                                                                                                                                               |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Debug                           | If `true`, it will draw debug tracing/overlapping information whenever the `TargetActor` performs a trace in non-shipping builds. Remember, non-`Instant` `TargetActors` will perform a trace on `Tick()` so these debug draw calls will also happen on `Tick()`.                                                        |
-| Filter                          | [Optional] A special struct for filtering out (removing) `Actors` from the targets when the trace/overlap happens. Typical use cases are to filter out the player's `Pawn`, require targets be of a specifc class, or to subclass the `FGameplayTargetDataFilter` struct to do more complex filters like filter by team. |
+| Filter                          | [Optional] A special struct for filtering out (removing) `Actors` from the targets when the trace/overlap happens. Typical use cases are to filter out the player's `Pawn`, require targets be of a specifc class. See [Target Data Filters](#concepts-target-data-filters) for more advanced use cases. |
 | Reticle Class                   | [Optional] Subclass of `AGameplayAbilityWorldReticle` that the `TargetActor` will spawn.                                                                                                                                                                                                                                 |
 | Reticle Parameters              | [Optional] Configure your Reticles. See [Reticles](#concepts-targeting-reticles).                                                                                                                                                                                                                                        |
 | Start Location                  | A special struct for where tracing should start from. Typically this will be the player's viewpoint, a weapon muzzle, or the `Pawn`'s location.                                                                                                                                                                          |
@@ -2451,8 +2453,37 @@ With the default `TargetActor` classes, `Actors` are only valid targets when the
 
 **[⬆ Back to Top](#table-of-contents)**
 
+<a name="concepts-target-data-filters"></a>
+#### 4.11.3 Target Data Filters
+Using both the `Make GanmeplayTargetDataFilter` and `Make Filter Handle` nodes, you can filter out the players's `Pawn` or select only a specific class. If you need more advanced filtering, you can subclass `FGameplayTargetDataFilter` and override the `FilterPassesForActor` function. 
+```c++
+USTRUCT(BlueprintType)
+struct GASDOCUMENTATION_API FGDNameTargetDataFilter : public FGameplayTargetDataFilter
+{
+	GENERATED_BODY()
+
+	/** Returns true if the actor passes the filter and will be targeted */
+	virtual bool FilterPassesForActor(const AActor* ActorToBeFiltered) const override;
+};
+```
+
+However, this will not work directly into the `Wait Target Data` node as it requires a `FGameplayTargetDataFilterHandle`. A new custom `Make Filter Handle` must be made to accept the subclass:
+```c++
+FGameplayTargetDataFilterHandle UGDTargetDataFilterBlueprintLibrary::MakeGDNameFilterHandle(FGDNameTargetDataFilter Filter, AActor* FilterActor)
+{
+	FGameplayTargetDataFilter* NewFilter = new FGDNameTargetDataFilter(Filter);
+	NewFilter->InitializeFilterContext(FilterActor);
+
+	FGameplayTargetDataFilterHandle FilterHandle;
+	FilterHandle.Filter = TSharedPtr<FGameplayTargetDataFilter>(NewFilter);
+	return FilterHandle;
+}
+```
+
+**[⬆ Back to Top](#table-of-contents)**
+
 <a name="concepts-targeting-reticles"></a>
-#### 4.11.3 Gameplay Ability World Reticles
+#### 4.11.4 Gameplay Ability World Reticles
 [`AGameplayAbilityWorldReticles`](https://docs.unrealengine.com/en-US/API/Plugins/GameplayAbilities/Abilities/AGameplayAbilityWorldReticle/index.html) (`Reticles`) visualize **who** you are targeting when targeting with non-`Instant` confirmed [`TargetActors`](#concepts-targeting-actors). `TargetActors` are responsible for the spawn and destroy lifetimes for all `Reticles`. `Reticles` are `AActors` so they can use any kind of visual component for representation. A common implementation as seen in [GASShooter](https://github.com/tranek/GASShooter) is to use a `WidgetComponent` to display a UMG Widget in screen space (always facing the player's camera). `Reticles` do not know which `AActor` that they're on, but you could subclass in that functionality on a custom `TargetActor`. `TargetActors` will typically update the `Reticle`'s location to the target's location on every `Tick()`.
 
 GASShooter uses `Reticles` to show locked-on targets for the rocket launcher's secondary ability's homing rockets. The red indicator on the enemy is the `Reticle`. The similar white image is the rocket launcher's crosshair.
@@ -2488,7 +2519,7 @@ void SetReticleMaterialParamVector(FName ParamName, FVector value);
 **[⬆ Back to Top](#table-of-contents)**
 
 <a name="concepts-targeting-containers"></a>
-#### 4.11.4 Gameplay Effect Containers Targeting
+#### 4.11.5 Gameplay Effect Containers Targeting
 [`GameplayEffectContainers`](#concepts-ge-containers) come with an optional, efficient means of producing [`TargetData`](#concepts-targeting-data). This targeting takes places instantly when the `EffectContainer` is applied on the client and the server. It's more efficient than [`TargetActors`](#concepts-targeting-actors) because it runs on the CDO of the targeting object (no spawning and destroying of `Actors`), but it lacks player input, happens instantly without needing confirmation, cannot be canceled, and cannot send data from the client to the server (produces data on both). It works well for instant traces and collision overlaps. Epic's [Action RPG Sample Project](https://www.unrealengine.com/marketplace/en-US/slug/action-rpg) includes two example types of targeting with its containers - target the ability owner and pull `TargetData` from an event. It also implements one in Blueprint to do instant sphere traces at some offset (set by child Blueprint classes) from the player. You can subclass `URPGTargetType` in C++ or Blueprint to make your own targeting types.
 
 **[⬆ Back to Top](#table-of-contents)**
